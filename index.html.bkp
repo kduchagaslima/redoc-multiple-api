@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Docs</title>
+    <script src="https://cdn.jsdelivr.net/npm/redoc@latest/bundles/redoc.standalone.min.js"></script>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="#" onclick="loadApi('docs/api1.yaml')">API 1</a></li>
+            <li><a href="#" onclick="loadApi('docs/api2.yaml')">API 2</a></li>
+            <!-- <li><a href="#" onclick="loadApi('api3.yaml')">API 3</a></li> -->
+        </ul>
+    </nav>
+    <div id="redoc-container"></div>
+
+    <script>
+        function loadApi(specUrl) {
+            Redoc.init(specUrl, {}, document.getElementById('redoc-container'));
+        }
+        loadApi('docs/api1.yaml'); // Carregar API padrão ao iniciar
+    </script>
+</body>
+</html>

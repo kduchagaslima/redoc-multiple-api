@@ -1,0 +1,26 @@
+theme:
+  colors:
+    primary:
+      main: '#005a9c'  # Cor principal do ReDoc
+  typography:
+    fontSize: '16px'
+    fontFamily: 'Arial, sans-serif'
+  sidebar:
+    backgroundColor: '#f5f5f5'
+    textColor: '#333'
+    width: '260px'
+  rightPanel:
+    backgroundColor: '#ffffff'
+    width: '40%'
+  spacing:
+    sectionVertical: 20
+    sectionHorizontal: 20
+  menu:
+    width: '260px'
+    backgroundColor: '#fafafa'
+    textColor: '#222'
+    activeTextColor: '#005a9c'
+    groupItems: true  # Habilita submenus no sidebar
+  logo:
+    gutter: '20px'
+    maxHeight: '50px'
