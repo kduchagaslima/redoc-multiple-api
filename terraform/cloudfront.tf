@@ -7,14 +7,27 @@ resource "aws_s3_bucket_policy" "openapi_policy" {
     Statement = [
       {
         Effect   = "Allow"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action   = ["s3:GetObject","s3:ListBucket"]
+        Resource = ["${aws_s3_bucket.app_bucket.arn}/*","${aws_s3_bucket.app_bucket.arn}"]
+        Condition = {
+          StringEquals = {
+            "aws:SourceArn" = aws_cloudfront_distribution.openapi_cdn.arn 
+          }
+        }
+      },
+      {
+        Effect   = "Deny"
         Principal = "*"
-        Action   = "s3:GetObject"
-        Resource = "${aws_s3_bucket.app_bucket.arn}/*"
-        # Condition = {
-        #   StringEquals = {
-        #     "aws:Referer" = "https://${aws_cloudfront_distribution.openapi_cdn.domain_name}"
-        #   }
-        # }
+        Action   = "*"
+        Resource = ["${aws_s3_bucket.app_bucket.arn}/*","${aws_s3_bucket.app_bucket.arn}"]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
       }
     ]
   })

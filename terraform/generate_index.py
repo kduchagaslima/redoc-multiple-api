@@ -1,36 +1,61 @@
 import boto3
 import json
 import os
+import logging
+
+# Configuração do logging (modo debug)
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger()
 
 # Configuração do Bucket
 BUCKET_NAME = os.environ.get("BUCKET_NAME")
 PREFIX = os.environ.get("BUCKET_PREFIX", "")  # Pasta onde os arquivos OpenAPI estão
 CLOUDFRONT_URL = os.environ.get("CLOUDFRONT_URL")
+
 # Conectar ao S3
 s3 = boto3.client("s3")
 
 def listar_arquivos_yaml(bucket, prefix):
     """Lista os arquivos .yaml e .yml dentro do bucket/prefix especificado."""
-    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
-    arquivos = [
-        obj["Key"]
-        for obj in response.get("Contents", [])
-        if obj["Key"].endswith((".yaml", ".yml"))
-    ]
-    return arquivos
+    try:
+        logger.debug(f"Listando arquivos em s3://{bucket}/{prefix}")
+        response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+
+        if "Contents" not in response:
+            logger.warning("Nenhum arquivo encontrado no bucket.")
+            return []
+
+        arquivos = [
+            obj["Key"]
+            for obj in response.get("Contents", [])
+            if obj["Key"].endswith((".yaml", ".yml"))
+        ]
+
+        logger.debug(f"Arquivos encontrados: {arquivos}")
+        return arquivos
+    except Exception as e:
+        logger.error(f"Erro ao listar arquivos no S3: {str(e)}", exc_info=True)
+        return []
 
 def gerar_html():
     """Gera o HTML baseado nos arquivos OpenAPI armazenados no S3."""
-    arquivos = listar_arquivos_yaml(BUCKET_NAME, PREFIX)
+    try:
+        arquivos = listar_arquivos_yaml(BUCKET_NAME, PREFIX)
 
-    api_data = []
-    for arquivo in arquivos:
-        api_name = arquivo.split("/")[-1].replace(".yaml", "").replace(".yml", "")
-        api_url = f"https://{CLOUDFRONT_URL}/{arquivo}"
-        api_data.append({"name": api_name, "url": api_url})
+        if not arquivos:
+            logger.warning("Nenhum arquivo OpenAPI encontrado para gerar o HTML.")
+            return {"statusCode": 400, "body": "Nenhum arquivo OpenAPI encontrado."}
 
-    # Template do HTML
-    html_content = f"""<!DOCTYPE html>
+        api_data = []
+        for arquivo in arquivos:
+            api_name = arquivo.split("/")[-1].replace(".yaml", "").replace(".yml", "")
+            api_url = f"https://{CLOUDFRONT_URL}/{arquivo}"
+            api_data.append({"name": api_name, "url": api_url})
+
+        logger.debug(f"Gerando HTML com APIs: {api_data}")
+
+        # Template do HTML
+        html_content = f"""<!DOCTYPE html>
 <html>
 <head>
     <title>ReDoc Multi-API Sidebar</title>
@@ -138,17 +163,27 @@ def gerar_html():
 </body>
 </html>"""
 
-    # Salvar o HTML no S3
-    s3.put_object(
-        Bucket=BUCKET_NAME,
-        Key="index.html",
-        Body=html_content,
-        ContentType="text/html"
-    )
+        # Salvar o HTML no S3
+        logger.debug("Salvando index.html no S3...")
+        s3.put_object(
+            Bucket=BUCKET_NAME,
+            Key="index.html",
+            Body=html_content,
+            ContentType="text/html"
+        )
+        logger.info("index.html atualizado com sucesso no S3.")
 
-    return {"statusCode": 200, "body": "HTML atualizado no S3"}
+        return {"statusCode": 200, "body": "HTML atualizado no S3"}
+
+    except Exception as e:
+        logger.error(f"Erro ao gerar HTML: {str(e)}", exc_info=True)
+        return {"statusCode": 500, "body": "Erro ao gerar HTML."}
 
 # 🔥 Handler do Lambda (invocado pelo S3)
 def lambda_handler(event, context):
-    print(f"Evento recebido: {json.dumps(event)}")
-    return gerar_html()
+    logger.debug(f"Evento recebido: {json.dumps(event, indent=2)}")
+    
+    resultado = gerar_html()
+    
+    logger.debug(f"Resultado da execução: {resultado}")
+    return resultado

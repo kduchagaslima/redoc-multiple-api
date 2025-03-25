@@ -22,7 +22,7 @@ resource "aws_lambda_function" "generate_index" {
       TZ = "America/Sao_Paulo"
       roleArn = aws_iam_role.lambda_role.arn
       BUCKET_NAME = aws_s3_bucket.app_bucket.id
-      BUCKET_PREFIX = "/apis"
+      BUCKET_PREFIX = "apis/"
       CLOUDFRONT_URL = aws_cloudfront_distribution.openapi_cdn.domain_name
     }
   }
