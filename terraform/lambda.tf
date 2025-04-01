@@ -1,6 +1,16 @@
+resource "null_resource" "install_dependencies" {
+  provisioner "local-exec" {
+    command = <<EOT
+      pip3 install -r requirements.txt -t ./package
+    EOT
+  }
+}
+
+
 data "archive_file" "python_lambda_package" {  
   type = "zip"  
-  source_file = "${path.module}/generate_index.py" 
+  # source_file = "${path.module}/generate_index.py" 
+  source_dir = "${path.module}/package/"
   output_path = "${path.module}/package.zip"
 }
 
@@ -41,8 +51,15 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
 
   lambda_function {
     lambda_function_arn = aws_lambda_function.generate_index.arn
-    events              = ["s3:ObjectCreated:*"]
+    events              = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*"]
     filter_prefix       = "apis/"
     filter_suffix       = ".yaml"
+  }
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.generate_index.arn
+    events              = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*"]
+    filter_prefix = "apis/"
+    filter_suffix = ".json"
   }
 }

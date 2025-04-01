@@ -2,6 +2,7 @@ import boto3
 import json
 import os
 import logging
+import yaml
 
 # Configuração do logging (modo debug)
 logging.basicConfig(level=logging.DEBUG)
@@ -16,26 +17,28 @@ CLOUDFRONT_URL = os.environ.get("CLOUDFRONT_URL")
 s3 = boto3.client("s3")
 
 def listar_arquivos_yaml(bucket, prefix):
-    """Lista os arquivos .yaml e .yml dentro do bucket/prefix especificado."""
-    try:
-        logger.debug(f"Listando arquivos em s3://{bucket}/{prefix}")
-        response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    """Lista os arquivos .yaml , .yml e .json dentro do bucket/prefix especificado."""
+    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    arquivos = [
+        obj["Key"]
+        for obj in response.get("Contents", [])
+        if obj["Key"].endswith((".yaml", ".yml", ".json"))
+    ]
+    return arquivos
 
-        if "Contents" not in response:
-            logger.warning("Nenhum arquivo encontrado no bucket.")
-            return []
+def obter_detalhes_api(bucket, arquivo):
+    """Obtém os detalhes da API a partir do arquivo OpenAPI."""
+    response = s3.get_object(Bucket=bucket, Key=arquivo)
+    conteudo = response["Body"].read().decode("utf-8")
+    if arquivo.endswith((".yaml", ".yml")):
+        spec = yaml.safe_load(conteudo)
+    else:
+        spec = json.loads(conteudo)
 
-        arquivos = [
-            obj["Key"]
-            for obj in response.get("Contents", [])
-            if obj["Key"].endswith((".yaml", ".yml"))
-        ]
-
-        logger.debug(f"Arquivos encontrados: {arquivos}")
-        return arquivos
-    except Exception as e:
-        logger.error(f"Erro ao listar arquivos no S3: {str(e)}", exc_info=True)
-        return []
+    title = spec.get("info", {}).get("title", "N/A")
+    squad = spec.get("info", {}).get("x-squad", {}).get('name', 'N/A')
+    tech_lead = spec.get("info", {}).get("x-squad", {}).get('tech_lead', 'N/A')
+    return title, squad, tech_lead
 
 def gerar_html():
     """Gera o HTML baseado nos arquivos OpenAPI armazenados no S3."""
